@@ -2,8 +2,8 @@ library(tidyverse)
 library(magick)
 library(furrr)
 
-pdf_folder <- "C:/Users/Vladi/Documents/imagePDFs/"
-img_folder <- "C:/Users/Vladi/Documents/pages/"
+pdf_folder <- "C:/Users/Vladi/Documents/imagePDFs2/"
+img_folder <- "C:/Users/Vladi/Documents/pages2/"
 
 
 extract_page_as_png <- function(pdf_file, page, density = 300, dest_folder) {
@@ -58,14 +58,14 @@ ceiling(5001/files_per_folder)
 25 * 200
 
 folder <- img_folder
-
+start_at <- 34
 # almost, but also moved dirlast to dir2 for some reason?
-split_into_subfolders <- function(folder, files_per_folder = 200) {
+split_into_subfolders <- function(folder, files_per_folder = 200, start_at = 1) {
   files_to_move <- list.files(folder, full.names = TRUE)
   old_names <- list.files(folder)
   #create dirs
   number_of_folders <- ceiling(length(files_to_move)/files_per_folder)
-  vec_folders <- paste0(folder, "dir", 1:number_of_folders)
+  vec_folders <- paste0(folder, "dir", start_at:(number_of_folders + start_at - 1))
   
   #create new folders
   vec_folders |> 
@@ -73,10 +73,13 @@ split_into_subfolders <- function(folder, files_per_folder = 200) {
   
   old_path <- stringr::str_remove(files_to_move[1], stringr::fixed(old_names[1]))
   # new filenames
-  new_names <- paste0(old_path, "dir", ceiling(seq_along(files_to_move)/files_per_folder), "/", old_names)
-  
+  new_names <- paste0(rep(vec_folders, each = files_per_folder), "/", old_names)
+  new_names <- new_names[1:length(files_to_move)]
   file.rename(from = files_to_move, new_names)
   
 }
 
+split_into_subfolders(img_folder, start_at = 34)
 
+
+tt <- tibble(new_names)

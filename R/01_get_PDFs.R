@@ -10,25 +10,60 @@ my.data <- epmc_search(query = 'heatmap[capt]', limit = 250)
 
 compound_query <- "((((((flow cytometry[CAPT]) OR fret[CAPT]) OR barcoding[CAPT]) OR ems[CAPT]) OR electromicrograph[CAPT]) OR heatmap[CAPT]) OR lasagna[CAPT]"
 compound_query <- "(flow cytometry[CAPT]) OR fret[CAPT]"
-my.data <- epmc_search(query = compound_query, limit = 250)
+
+terms <- c("fMRI",
+           "doppler",
+           "PET",
+           "PET/CT",
+           "CT/PET",
+           "echocardiography",
+           "echocardiogram",
+           "false color",
+           "color mammogram",
+           "micro-CT",
+           "cage monitoring system")
+
+make_capt_query <- function(output, input) {
+  make_simple_query <- function(term) {
+    if (!stringr::str_detect(term, "\\[")) {
+      return(paste0(term, "[CAPT]")) 
+    } else {
+        return(term)
+      }
+  }
+  paste0("(", make_simple_query(output), ") OR ", make_simple_query(input))
+  
+  
+    
+}
+
+compound_query <- purrr::reduce(terms, make_capt_query)
+
+compound_query <- "((((((fMRI[CAPT]) OR doppler[CAPT]) OR PET[CAPT]) OR CT/PET[CAPT]) OR false color[CAPT]) OR echocardiography[CAPT]) OR echocardiogram[CAPT]"
+
+
+my.data <- epmc_search(query = compound_query, limit = 300)
 
 res <- entrez_search(db = "pmc", term = "heatmap[CAPT]", retmax = 500, use_history = TRUE)
 
-res <- entrez_search(db = "pmc", term = compound_query, retmax = 350, use_history = TRUE)
+# res <- entrez_search(db = "pmc", term = compound_query, retmax = 350, use_history = TRUE)
+res <- entrez_search(db = "pmc", term = "false color[CAPT]", retmax = 50, use_history = TRUE)
 
 results <- entrez_summary(db = "pmc", id = res$ids, api_key = Sys.getenv("ENTREZ_KEY"))
 
-results <- results
 
-results[[1]]
-
+results[[170]]$articleids
+record <- results[[170]]
 get_id <- function(record, id_type = c("pmcid", "doi")) {
   # id_type <- "doi"
     
-  record |>
+  id <- record |>
     purrr::pluck("articleids") |> 
     dplyr::filter(idtype == id_type) |> 
-    dplyr::pull(value) 
+    dplyr::pull(value)
+  
+  if (length(id) == 0) return(NA)
+    id
   }
 
 pmcids <- results |>
@@ -39,14 +74,14 @@ pmcids <- results |>
 dois <- results |> 
   map_chr(get_id, "doi") |> 
   unname()
+  
+dois <- dois[!is.na(dois)]
 
 
-dois |> 
-  filter_downloaded(pdf_folder)
 
 
 filter_downloaded <- function(dois, download_folder) {
-  downloaded_dois <- list.files(pdf_folder) |> 
+  downloaded_dois <- list.files(download_folder) |> 
     tolower() |> 
     stringr::str_remove(".pdf") |> 
     stringr::str_replace_all("\\+", "/")
@@ -55,7 +90,11 @@ filter_downloaded <- function(dois, download_folder) {
   
 }
 
-pdf_folder <- "C:/Users/Vladi/Documents/imagePDFs/"
+pdf_folder <- "C:/Users/Vladi/Documents/imagePDFs2/"
+
+dois <- dois |> 
+  filter_downloaded(pdf_folder)
+
 email <- Sys.getenv("EMAIL")
 pdf_retrieve(dois, email = email, save_folder = pdf_folder, overwrite_files = FALSE, sleep = 1,
              # only_PMC = TRUE,
